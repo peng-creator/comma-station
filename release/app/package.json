@@ -1,0 +1,18 @@
+{
+  "name": "comma-station",
+  "version": "1.0.0",
+  "description": "Comma Station",
+  "license": "MIT",
+  "author": {
+    "name": "pengpongpang",
+    "email": "pengpongpang@163.com",
+    "url": "https://peng-creator.github.io/comma-web/comma/"
+  },
+  "main": "./dist/main/main.js",
+  "scripts": {
+    "electron-rebuild": "node -r ts-node/register ../../.erb/scripts/electron-rebuild.js",
+    "postinstall": "npm run electron-rebuild && npm run link-modules",
+    "link-modules": "node -r ts-node/register ../../.erb/scripts/link-modules.ts"
+  },
+  "dependencies": {}
+}
