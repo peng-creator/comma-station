@@ -19,6 +19,7 @@ import { getRecords, saveRecord } from './src/record/record';
 import cookieParser from 'cookie-parser';
 import { firstValueFrom } from 'rxjs';
 import { dbRoot$ } from './state';
+import * as http from 'http';
 
 let sessionId = '';
 ipcMain.on('ipc-on-session-id-change', async (event, arg) => {
@@ -26,7 +27,7 @@ ipcMain.on('ipc-on-session-id-change', async (event, arg) => {
     sessionId = arg[0];
   }
 });
-const webHome = path.resolve(__dirname, './comma-web');
+const webHome = path.resolve(__dirname, '../../comma-web');
 
 const app = express();
 
@@ -59,16 +60,53 @@ app.get('/ipaddress', (req, res) => {
   res.send(results[0] || '');
 });
 
+app.get('/manifest.json', (req, res) => {
+  const { sessionId: _sessionId } = req.cookies;
+  console.log('getting manifest.json, _sessionId:', _sessionId);
+  res.json({
+    "name": "Comma",
+    "short_name": "Comma",
+    "start_url": `/?sessionId=${_sessionId}`,
+    "display": "fullscreen",
+    "background_color": "#f578a7",
+    "theme_color": "#f578a7",
+    "icons": [
+      {
+        "src": "assets/icon/favicon.png",
+        "sizes": "64x64 32x32 24x24 16x16",
+        "type": "image/png"
+      }
+    ]
+  }
+  );
+});
+
 app.use((req, res, next) => {
+  console.log('in root middleware, req.path:', req.path);
   if (req.path === '/') {
     next();
     return;
   }
   const { sessionId: _sessionId } = req.cookies;
+  console.log('in root middleware, sessionId:', _sessionId);
   if (_sessionId === sessionId) {
+    console.log('valid request');
     next();
     return;
   }
+  if (req.path.startsWith('/static/')) {
+    next();
+    return;
+  }
+  if (req.path.startsWith('/assets/')) {
+    next();
+    return;
+  }
+  if (['/assets/icon/favicon.png'].includes(req.path)) {
+    next();
+    return;
+  }
+  console.log('invalid request');
   res.send('请扫描Comma Station二维码重新访问');
   res.status(401);
 });
@@ -252,10 +290,52 @@ app.post('/api/error', (req, res) => {
   });
 });
 
+app.get('/*', (req, res) => {
+  console.log('req.path', req.path);
+  const filePath = path.join(webHome, req.path);
+  const webRoot = path.join(webHome, '/');
+  console.log('filePath:', filePath);
+  if (filePath.startsWith(webHome)) {
+    if (filePath === webRoot) {
+      const { sessionId: _sessionId } = req.query || {};
+      console.log('req.query:', req.query);
+      console.log('_sessionId === sessionId:', _sessionId === sessionId);
+      console.log('_sessionId:',  _sessionId);
+      console.log('sessionId:',  sessionId);
+      if (_sessionId === sessionId) {
+        res.cookie('sessionId', sessionId);
+        res.redirect('/');
+        return;
+      } else {
+        // const { sessionId: _sessionId } = req.cookies;
+        // if (_sessionId === sessionId) {
+          res.sendFile(path.join(webHome, 'index.html'));
+        // } else {
+        //   res.status(401);
+        //   res.sendFile(path.join(webHome, '401.html'));
+        // }
+      }
+    } else {
+      res.sendFile(filePath);;
+    }
+  } else {
+    console.log('file not exists:', filePath);
+    res.status(404);
+    res.send('');
+  }
+});
+// app.listen(8081);
+// const server = https.createServer({ key: selfsignedKeys.private, cert: selfsignedKeys.cert }, app); 
+const server = http.createServer(app);     
+server.listen(8080);
+
 const wsList = new Set<WebSocket>();
-(app as any).ws('/', function(ws: WebSocket, req: any) {
+const wss = new WebSocket.Server({ server });
+wss.on('connection', (ws: WebSocket) => {
+  console.log('new websocket connection!');
   wsList.add(ws);
   ws.on('message', function(msg: string) {
+    console.log('websocket connection on message:', msg);
     if (msg === '__ping__') {
       ws.send('__pong__');
       return;
@@ -268,35 +348,12 @@ const wsList = new Set<WebSocket>();
     })
     console.log(msg);
   });
-  ws.on('close', () => {
+  ws.on('close', (code, reason) => {
+    console.log('websocket connection closed, code', code, ', reason:', reason.length);
     wsList.delete(ws);
-  })
-  // console.log('socket', req.testing);
+  });
+  ws.onerror = (err) => {
+    console.log('websocket connection on error:', err);
+  };
 });
 
-app.get('/*', (req, res) => {
-  console.log('req.path', req.path);
-  const filePath = path.join(webHome, req.path);
-  const webRoot = path.join(webHome, '/');
-  console.log('filePath:', filePath);
-  if (filePath.startsWith(webHome)) {
-    if (filePath === webRoot) {
-      const { sessionId: _sessionId } = req.query || {};
-      if (_sessionId === sessionId) {
-        res.sendFile(path.join(webHome, 'index.html'));
-        res.cookie('sessionId', sessionId);
-      } else {
-        res.status(401);
-        res.send('请扫描Comma Station二维码重新访问！');
-      }
-    } else {
-      res.sendFile(filePath);;
-    }
-  } else {
-    console.log('file not exists:', filePath);
-    res.status(404);
-    res.send('');
-  }
-});
-
-app.listen(8080)

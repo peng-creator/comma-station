@@ -1,15 +1,24 @@
 import Parser from 'srt-parser-2';
+import { parse } from 'node-html-parser';
 import { Subtitle } from '../../types/Subtitle';
 import { timeToMilliseconds } from '../../utils/time';
-import { JSDOM } from 'jsdom';
 
 export function srtToSubtitle(content: string) {
   const parser = new Parser();
   const result = parser.fromSrt(content);
   return result
     .map(({ id, startTime, endTime, text }) => {
-      const dom = new JSDOM(`<!DOCTYPE html><p>${text}</p>`);
-      text = dom.window.document.querySelector("p")?.textContent?.toLowerCase() || text;
+      const root = parse(`<p>${text}</p>`);
+      let textContent = root.querySelector('p')?.textContent;
+      if (textContent) {
+        text = textContent.split(' ').map((w) => {
+          const isUpperCase = /^[^a-z]+$/.test(w);
+          if (isUpperCase) {
+            return w.toLocaleLowerCase();
+          }
+          return w;
+        }).join(' ')
+      }
       return {
         id,
         start: timeToMilliseconds(startTime.replace(',', '.')),

@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { Ass } from './ass/ass';
 import { srtToSubtitle } from './srt/srt';
+import { writeJSON } from '../JsonDB';
 
 const loadFromFile = async (srtFilePath: string, assFilePath: string) => {
   return Promise.all([
@@ -40,13 +41,13 @@ const getFilePath = async (videoPath: string) => {
   console.log('dirChildren:', dirChildren);
   const assList = dirChildren.filter((file) => {
     return path.extname(file).toLowerCase() === '.ass';
-  });
+  }).sort();
   const srtList = dirChildren.filter((file) => {
     return path.extname(file).toLowerCase() === '.srt';
-  });
+  }).sort();
   const mp4List = dirChildren.filter((file) => {
     return path.extname(file).toLowerCase() === '.mp4';
-  });
+  }).sort();
   const indexOfCurrentVideo = mp4List.indexOf(path.basename(videoPath));
   if (indexOfCurrentVideo === -1) {
     throw new Error('没找到当前视频文件！');
@@ -83,7 +84,7 @@ export const getSubtitleOfVideo = async (videoPath: string) => {
       console.log('try to load ass from:', assFilePath);
       return loadFromFile(srtFilePath, assFilePath)
       .then((subtitles) => {
-        fs.writeFile(cachePath, JSON.stringify(subtitles));
+        writeJSON(subtitles, cachePath);
         return subtitles;
       })
       .catch((e: any) => {

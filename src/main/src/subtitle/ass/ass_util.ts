@@ -15,7 +15,15 @@ export function parseAssText(assText: string): Subtitle[] {
     const result = dialogue.map(({ End, Start, Text }, i) => {
       const { parsed } = Text;
       const subtitles = parsed
-        .map(({ text }) => text.replace(/\\N/g, ' ').toLowerCase())
+        .map(({ text }) => {
+          return text.replace(/\\N/g, ' ').split(' ').map((w) => {
+            const isUpperCase = /^[^a-z]+$/.test(w);
+            if (isUpperCase) {
+              return w.toLocaleLowerCase();
+            }
+            return w;
+          }).join(' ');
+      })
         .filter((t) => t.length > 0);
       let localStart;
       let localEnd;

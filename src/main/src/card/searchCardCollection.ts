@@ -6,6 +6,7 @@ import { v5 as uuidv5 } from 'uuid';
 import { FlashCard } from '../types/FlashCard';
 import { dbRoot$ } from '../../state';
 import { firstValueFrom } from 'rxjs';
+import { writeJSON } from '../JsonDB';
 
 export const CARD_COLLECTION_NAMESPACE = '3b671a64-40d5-491e-99b0-da01ff1f3341';
 
@@ -28,13 +29,53 @@ type CardIndexMap = { [prop: string]: string };
 let cardIndexMapCache: CardIndexMap = {};
 let cardCollections: string[] = [];
 
+const reindex = async (flashCardRoot: string) => {
+  let nextCardIndexMapCache: CardIndexMap = {};
+  const res = await fs.readdir(flashCardRoot);
+  for (let dir of res) {
+    if (dir.startsWith('.') || dir.endsWith('json')) {
+      continue;
+    }
+    const cardDir = PATH.join(flashCardRoot, dir);
+    const cardDirStat = await fs.stat(cardDir);
+    if (!cardDirStat.isDirectory()) {
+      continue;
+    }
+    const childFiles = await fs.readdir(cardDir);
+    let files = childFiles.filter((file) => {
+      return file.endsWith('.json') && !file.startsWith('.') && file.length === 41;
+    });
+    for (let childFile of files) {
+      const cardBuf = await fs.readFile(PATH.join(cardDir, childFile));
+      try {
+        const card: FlashCard = JSON.parse(cardBuf.toString());
+        nextCardIndexMapCache[dir] = card.front.word;
+        // console.log('addIndex:', dir, ", word:", card.front.word);
+      } catch (e) {
+        fs.unlink(PATH.join(cardDir, childFile));
+      }
+    }
+  }
+  cardIndexMapCache = nextCardIndexMapCache;
+  cardCollections = [...new Set(Object.values(cardIndexMapCache))];
+  flashCardMiniSearch.removeAll();
+  addSearchItems(
+    cardCollections.map((id) => {
+      return { id };
+    })
+  );
+  //  console.log(nextCardIndexMapCache);
+  writeJSON(cardIndexMapCache, PATH.join(flashCardRoot, 'index.json'));
+}
+
+
 dbRoot$.subscribe({
   next(dbRoot) {
     const L1 = PATH.join(dbRoot, 'flash_cards');
-    const resourceDir = PATH.join(dbRoot, 'resources');
+    const resourceDir = PATH.join(dbRoot, 'resource');
     mkdir(L1);
     mkdir(resourceDir);
-
+    reindex(L1);
     const cardIndexMapPromise = fs
       .readFile(PATH.join(L1, 'index.json'))
       .then((buf) => {

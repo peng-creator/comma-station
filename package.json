@@ -114,6 +114,7 @@
     "express-http-proxy": "^1.6.3",
     "express-ws": "^5.0.2",
     "file-type": "16.5.3",
+    "https": "^1.0.0",
     "internal-ip": "^7.0.0",
     "jschardet": "^3.0.0",
     "minisearch": "^5.0.0",
@@ -124,7 +125,9 @@
     "react-dom": "^18.1.0",
     "react-router-dom": "^6.3.0",
     "rxjs": "^7.5.5",
+    "selfsigned": "^2.1.1",
     "srt-parser-2": "^1.1.7",
+    "ssl-proxy": "^1.0.3",
     "supermemo": "^2.0.17",
     "uuid": "^8.3.2",
     "watch": "^1.0.2"
@@ -211,7 +214,6 @@
       "dist",
       "node_modules",
       "package.json",
-      "ffmpeg",
       "comma-web"
     ],
     "afterSign": ".erb/scripts/notarize.js",

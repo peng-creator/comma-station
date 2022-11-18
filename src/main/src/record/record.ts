@@ -3,6 +3,7 @@ import {promises as fs} from 'fs';
 import { mkdir } from '../utils/mkdir';
 import { dbRoot$ } from '../../state';
 import { firstValueFrom } from 'rxjs';
+import { writeJSON } from '../JsonDB';
 
 const CACHE_VOLUME = 20;
 
@@ -67,7 +68,7 @@ export const saveRecord = async (record: Record) => {
     if (!RECORD_FILE) {
         return;
     }
-    return fs.writeFile(RECORD_FILE, JSON.stringify(recordCache));
+    return writeJSON(recordCache, RECORD_FILE);
 }
 
 export const getRecords = async () => {

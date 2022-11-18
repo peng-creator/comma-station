@@ -2,15 +2,13 @@
 import { promises as fs } from 'fs';
 import jschardet from 'jschardet';
 
+import { writeJSON } from '../../JsonDB';
 import { parseAssText } from './ass_util';
 
 export class Ass {
   // file must end with .mp4
   static saveByVideoSrc = async (file: string, subtitleContent: any[]) => {
-    return fs.writeFile(
-      `${file.slice(0, -4)}.json`,
-      JSON.stringify(subtitleContent)
-    );
+    return writeJSON(subtitleContent, `${file.slice(0, -4)}.json`);
   };
 
   static loadBySrc = async (file: string) => {
