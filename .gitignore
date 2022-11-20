@@ -2,6 +2,7 @@
 logs
 *.log
 comma-web
+flash_cards
 # Runtime data
 pids
 *.pid

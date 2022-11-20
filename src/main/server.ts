@@ -276,17 +276,21 @@ app.get('/api/record', (req, res) => {
 
 app.post('/api/error', (req, res) => {
   firstValueFrom(dbRoot$)
-  .then((dbRoot) => {
+  .then(async (dbRoot) => {
     if (!dbRoot) {
       res.send('success');
       return;
     }
     const ERROR_LOG_PATH = path.join(dbRoot, 'error.log');
-    fs.writeFile(ERROR_LOG_PATH, '');
-      if (req.body) {
-        fs.appendFile(ERROR_LOG_PATH, JSON.stringify(req.body));
-      }
-      res.send('success');
+    try {
+      await fs.stat(ERROR_LOG_PATH);
+    } catch(e) {
+      await fs.writeFile(ERROR_LOG_PATH, '');
+    }
+    if (req.body) {
+      fs.appendFile(ERROR_LOG_PATH, req.body.error);
+    }
+    res.send('success');
   });
 });
 
