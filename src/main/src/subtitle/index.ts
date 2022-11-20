@@ -3,6 +3,7 @@ import path from 'path';
 import { Ass } from './ass/ass';
 import { srtToSubtitle } from './srt/srt';
 import { writeJSON } from '../JsonDB';
+import { mergeNonePunctuations, mergeWithComma } from './merge';
 
 const loadFromFile = async (srtFilePath: string, assFilePath: string) => {
   return Promise.all([
@@ -84,8 +85,14 @@ export const getSubtitleOfVideo = async (videoPath: string) => {
       console.log('try to load ass from:', assFilePath);
       return loadFromFile(srtFilePath, assFilePath)
       .then((subtitles) => {
-        writeJSON(subtitles, cachePath);
-        return subtitles;
+        const filtered = subtitles.map(subtitle => {
+          subtitle.subtitles = subtitle.subtitles.filter((s) => s.trim().length > 0);
+          return subtitle;
+        });
+        console.log('filtered:', filtered);
+        const mergedSubtitles = mergeWithComma(mergeNonePunctuations(filtered));
+        writeJSON(mergedSubtitles, cachePath);
+        return mergedSubtitles;
       })
       .catch((e: any) => {
         console.log(
@@ -114,6 +121,14 @@ export const loadFromFileWithoutCache = async (videoPath: string) => {
     assFilePath
   } = await getFilePath(videoPath);
   return loadFromFile(srtFilePath, assFilePath)
+  .then((subtitles) => {
+    const filtered = subtitles.map(subtitle => {
+      subtitle.subtitles = subtitle.subtitles.filter((s) => s.trim().length > 0);
+      return subtitle;
+    });
+    console.log('filtered:', filtered);
+    return mergeWithComma(mergeNonePunctuations(filtered));
+  })
   .then((subtitles) => {
     return subtitles
       .filter((s: any) => s.subtitles.length > 0)

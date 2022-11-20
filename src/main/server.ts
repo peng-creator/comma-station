@@ -82,33 +82,35 @@ app.get('/manifest.json', (req, res) => {
 });
 
 app.use((req, res, next) => {
-  console.log('in root middleware, req.path:', req.path);
-  if (req.path === '/') {
-    next();
+      next();
     return;
-  }
-  const { sessionId: _sessionId } = req.cookies;
-  console.log('in root middleware, sessionId:', _sessionId);
-  if (_sessionId === sessionId) {
-    console.log('valid request');
-    next();
-    return;
-  }
-  if (req.path.startsWith('/static/')) {
-    next();
-    return;
-  }
-  if (req.path.startsWith('/assets/')) {
-    next();
-    return;
-  }
-  if (['/assets/icon/favicon.png'].includes(req.path)) {
-    next();
-    return;
-  }
-  console.log('invalid request');
-  res.send('请扫描Comma Station二维码重新访问');
-  res.status(401);
+  // console.log('in root middleware, req.path:', req.path);
+  // if (req.path === '/') {
+  //   next();
+  //   return;
+  // }
+  // const { sessionId: _sessionId } = req.cookies;
+  // console.log('in root middleware, sessionId:', _sessionId);
+  // if (_sessionId === sessionId) {
+  //   console.log('valid request');
+  //   next();
+  //   return;
+  // }
+  // if (req.path.startsWith('/static/')) {
+  //   next();
+  //   return;
+  // }
+  // if (req.path.startsWith('/assets/')) {
+  //   next();
+  //   return;
+  // }
+  // if (['/assets/icon/favicon.png'].includes(req.path)) {
+  //   next();
+  //   return;
+  // }
+  // console.log('invalid request');
+  // res.send('请扫描Comma Station二维码重新访问');
+  // res.status(401);
 });
 
 expressWs(app);
