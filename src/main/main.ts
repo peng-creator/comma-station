@@ -87,19 +87,29 @@ ipcMain.on('ipc-show-dir', async (event, arg) => {
   shell.showItemInFolder(arg[0]);
 });
 
+const RESOURCES_PATH = app.isPackaged
+? path.join(process.resourcesPath, 'assets')
+: path.join(__dirname, '../../assets');
+
+const getAssetPath = (...paths: string[]): string => {
+  return path.join(RESOURCES_PATH, ...paths);
+};
+
+ipcMain.on('ipc-open-comma', async (event, arg) => {
+  const win = new BrowserWindow({
+    width: 1024,
+    height: 728,
+    icon: getAssetPath('icon.png'),
+  });
+  win.loadURL(arg[0]);
+  win.menuBarVisible = false;
+});
+
 
 const createWindow = async () => {
   if (isDebug) {
     await installExtensions();
   }
-
-  const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
-
-  const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths);
-  };
 
   mainWindow = new BrowserWindow({
     show: false,
@@ -127,7 +137,7 @@ const createWindow = async () => {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-
+  mainWindow.menuBarVisible = false;
   const menuBuilder = new MenuBuilder(mainWindow);
   menuBuilder.buildMenu();
 

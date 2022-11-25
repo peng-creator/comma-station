@@ -53,7 +53,9 @@ const Main = () => {
         padding: '20px',
       }}
     >
-      <div>Comma 英语学习工作站已就绪 <Button><a href={commaWebAddress} target="_blank">本地访问</a></Button></div>
+      <div>Comma 英语学习工作站已就绪 <Button onClick={() => {
+        window.electron.ipcRenderer.sendMessage('ipc-open-comma', [commaWebAddress]);
+      }}>本地访问</Button></div>
       <div>移动端访问，请扫下方二维码：</div>
       {showSessionRefreshMsg && <div style={{color: 'rgb(242, 71, 71)', background: '#fff'}}>二维码已刷新，所有连接设备已断开！请重新扫描下方二维码：</div>}
       <div id="qrcode" style={{display: 'flex', justifyContent: 'center'}}/>
