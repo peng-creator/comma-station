@@ -145,6 +145,8 @@ export const saveCard = async (cardToSave: FlashCard) => {
   const keyword = cardToSave.front.word;
   const collectionId = uuidv5(keyword, CARD_COLLECTION_NAMESPACE);
   cardIndexMapCache[collectionId] = keyword;
+  const collectionKeywordList = [...new Set(Object.values(cardIndexMapCache))];
+  cardCollections = collectionKeywordList;
   const L1 = await getFlashCardDir();
   if (!L1) {
     return;
