@@ -40,11 +40,11 @@ export const mergeWithComma = (subtitles: Subtitle[]) => {
 
 export const mergeNonePunctuations = (subtitles: Subtitle[]) => {
     // 检测字幕是否使用.和,
-    const endwithPunctuationFound = subtitles.find((s) => {
+    const endwithPunctuationRate = subtitles.filter((s) => {
         const endwithPunctuation = s.subtitles.find(s => s.endsWith('.') || s.endsWith(','));
         return endwithPunctuation !== undefined;
-    }) !== undefined;
-    if (!endwithPunctuationFound) {
+    }).length / subtitles.length;
+    if (endwithPunctuationRate < 0.05) {
         return subtitles;
     }
     /**

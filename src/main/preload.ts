@@ -6,6 +6,7 @@ export type Channels =
   | 'ipc-select-dir'
   | 'ipc-show-dir'
   | 'ipc-open-comma'
+  | 'ipc-on-config-store-change'
   ;
 
 contextBridge.exposeInMainWorld('electron', {

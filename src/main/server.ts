@@ -27,6 +27,14 @@ ipcMain.on('ipc-on-session-id-change', async (event, arg) => {
     sessionId = arg[0];
   }
 });
+
+let configStore: any = {};
+ipcMain.on('ipc-on-config-store-change', (event, arg) => {
+  if (arg.length > 0) {
+    configStore = arg[0];
+  }
+});
+
 const webHome = path.resolve(__dirname, '../../comma-web');
 
 const app = express();
@@ -39,6 +47,14 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json({
   limit: '10mb'
 }));
+
+app.get('/access/:code', (req, res) => {
+  console.log('access code:', req.params.code);
+  if (req.params.code === configStore.accessCode) {
+    res.cookie('sessionId', sessionId);
+  }
+  res.redirect('/');
+});
 
 app.get('/ipaddress', (req, res) => {
   const nets = networkInterfaces();
@@ -107,8 +123,8 @@ app.use((req, res, next) => {
     return;
   }
   console.log('invalid request');
-  res.send('请扫描Comma Station二维码重新访问');
   res.status(401);
+  res.send('请扫描Comma Station二维码重新访问');
 });
 
 expressWs(app);
@@ -288,7 +304,7 @@ app.post('/api/error', (req, res) => {
       await fs.writeFile(ERROR_LOG_PATH, '');
     }
     if (req.body) {
-      fs.appendFile(ERROR_LOG_PATH, req.body.error);
+      fs.appendFile(ERROR_LOG_PATH, req.body.error + '\n');
     }
     res.send('success');
   });

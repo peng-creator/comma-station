@@ -59,11 +59,11 @@ const reindex = async (flashCardRoot: string) => {
   cardIndexMapCache = nextCardIndexMapCache;
   cardCollections = [...new Set(Object.values(cardIndexMapCache))];
   flashCardMiniSearch.removeAll();
-  addSearchItems(
-    cardCollections.map((id) => {
-      return { id };
-    })
-  );
+  const indexList = cardCollections.map((id) => {
+    return { id };
+  });
+  console.log('indexList:', indexList);
+  addSearchItems(indexList);
   //  console.log(nextCardIndexMapCache);
   writeJSON(cardIndexMapCache, PATH.join(flashCardRoot, 'index.json'));
 }
@@ -73,32 +73,33 @@ dbRoot$.subscribe({
   next(dbRoot) {
     const L1 = PATH.join(dbRoot, 'flash_cards');
     const resourceDir = PATH.join(dbRoot, 'resource');
-    mkdir(L1);
-    mkdir(resourceDir);
-    reindex(L1);
-    const cardIndexMapPromise = fs
-      .readFile(PATH.join(L1, 'index.json'))
-      .then((buf) => {
-        return JSON.parse(buf.toString()) as CardIndexMap;
-      })
-      .catch(() => {
-        return {};
-      });
+    (async () => {
+      await mkdir(L1);
+      await mkdir(resourceDir);
+      await reindex(L1);
+    })();
+    // const cardIndexMapPromise = fs
+    //   .readFile(PATH.join(L1, 'index.json'))
+    //   .then((buf) => {
+    //     return JSON.parse(buf.toString()) as CardIndexMap;
+    //   })
+    //   .catch(() => {
+    //     return {};
+    //   });
 
-    cardIndexMapPromise
-      .then((cardIndexMap: { [prop: string]: string }) => {
-        cardIndexMapCache = cardIndexMap;
-        const collectionKeywordList = [...new Set(Object.values(cardIndexMap))];
-        cardCollections = collectionKeywordList;
-        addSearchItems(
-          collectionKeywordList.map((id) => {
-            return { id };
-          })
-        );
-      })
-      .catch((e) => {
-        console.log('加载全部卡片集失败！');
-      });
+    // cardIndexMapPromise
+    //   .then((cardIndexMap: { [prop: string]: string }) => {
+    //     cardIndexMapCache = cardIndexMap;
+    //     const collectionKeywordList = [...new Set(Object.values(cardIndexMap))];
+    //     cardCollections = collectionKeywordList;
+    //     const indexList = collectionKeywordList.map((id) => {
+    //       return { id };
+    //     });
+    //     addSearchItems(indexList);
+    //   })
+    //   .catch((e) => {
+    //     console.log('加载全部卡片集失败！');
+    //   });
     }
 });
   
