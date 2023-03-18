@@ -110,7 +110,7 @@ const Main = () => {
 
       <div style={{padding: '14px'}}>
         <div style={{marginTop: '14px'}}>
-          浏览器访问：<a href={commaWebAddress} target="_blank">浏览器访问</a>
+          浏览器访问：<a href="http://localhost:8080" target="_blank">浏览器访问</a>
         </div>
         <div style={{marginTop: '14px'}}>子窗口访问： <Button onClick={() => {
           window.electron.ipcRenderer.sendMessage('ipc-open-comma', [commaWebAddress]);
