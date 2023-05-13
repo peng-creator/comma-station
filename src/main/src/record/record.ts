@@ -2,7 +2,7 @@ import PATH from 'path';
 import {promises as fs} from 'fs';
 import { mkdir } from '../utils/mkdir';
 import { dbRoot$ } from '../../state';
-import { firstValueFrom } from 'rxjs';
+import { filter, firstValueFrom } from 'rxjs';
 import { writeJSON } from '../JsonDB';
 
 const CACHE_VOLUME = 20;
@@ -18,7 +18,7 @@ dbRoot$.subscribe({
 });
 
 const getRecordFilePath = async () => {
-    const dbRoot = await firstValueFrom(dbRoot$);
+    const dbRoot = await firstValueFrom(dbRoot$.pipe(filter((r) => r !== null && r !== undefined && r !== '')));
     if (!dbRoot) {
       return '';
     }
@@ -43,12 +43,16 @@ let recordCache: RecordCache = {
 const loadFromCache = async () => {
     try {
         const RECORD_FILE = await getRecordFilePath();
+        console.log('loadFromCache RECORD_FILE:', RECORD_FILE);
         if (!RECORD_FILE) {
             return {} as RecordCache;
         }
         const buf = await fs.readFile(RECORD_FILE);
-        return (JSON.parse(buf.toString()) as RecordCache);
-    } catch {
+        const recordCache = (JSON.parse(buf.toString()) as RecordCache);
+        console.log('loadFromCache succeeded:', recordCache);
+        return recordCache;
+    } catch(e) {
+        console.log('loadFromCache failed:', e);
         return {} as RecordCache;
     }
 }
@@ -74,5 +78,6 @@ export const saveRecord = async (record: Record) => {
 export const getRecords = async () => {
     await loadCachePromise;
     const records = Object.values(recordCache);
+    console.log('getRecords:', records);
     return records.sort((a, b) => b.timestamp! - a.timestamp!);
 };

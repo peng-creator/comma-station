@@ -8770,6 +8770,11 @@
   "resolved" "https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.0.3.tgz"
   "version" "1.0.3"
 
+"sqlite@^4.1.2":
+  "integrity" "sha512-FlBG51gHbux5vPjwnoqFEghNGvnTMTbHyiI09U3qFTQs9AtWuwd4i++6+WCusCXKrVdIDLzfdGekrolr3m4U4A=="
+  "resolved" "https://repo.huaweicloud.com/repository/npm/sqlite/-/sqlite-4.1.2.tgz"
+  "version" "4.1.2"
+
 "srt-parser-2@^1.1.7":
   "integrity" "sha512-JAZKktYKrQ16HPMQkVKxPvCeAdPPJh/186T/uuyCte3+J6/XthkfaGeNqmZ16DDZi1vU6YIINpVHXG5QnG1Hlg=="
   "resolved" "https://registry.npmjs.org/srt-parser-2/-/srt-parser-2-1.1.7.tgz"

@@ -126,6 +126,7 @@
     "react-router-dom": "^6.3.0",
     "rxjs": "^7.5.5",
     "selfsigned": "^2.1.1",
+    "sqlite": "^4.1.2",
     "srt-parser-2": "^1.1.7",
     "ssl-proxy": "^1.0.3",
     "supermemo": "^2.0.17",

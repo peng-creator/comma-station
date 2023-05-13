@@ -1,12 +1,10 @@
 import MiniSearch from 'minisearch';
 import PATH from 'path';
-import { mkdir } from '../utils/mkdir';
 import { promises as fs } from 'fs';
-import { v5 as uuidv5 } from 'uuid';
 import { FlashCard } from '../types/FlashCard';
-import { dbRoot$ } from '../../state';
 import { firstValueFrom } from 'rxjs';
-import { writeJSON } from '../JsonDB';
+import { base64ToString, db$, objectToBase64, stringToBase64 } from '../db';
+import { dbRoot$ } from '../../state';
 
 export const CARD_COLLECTION_NAMESPACE = '3b671a64-40d5-491e-99b0-da01ff1f3341';
 
@@ -15,22 +13,14 @@ type FlashCardSearchItem = {
   id: string;
 };
 
+const cardCollections: Set<string> = new Set();
 
-const getFlashCardDir = async () => {
+const reindex = async () => {
   const dbRoot = await firstValueFrom(dbRoot$);
   if (!dbRoot) {
-    return '';
+    return;
   }
-  return PATH.join(dbRoot, 'flash_cards');
-}
-
-
-type CardIndexMap = { [prop: string]: string };
-let cardIndexMapCache: CardIndexMap = {};
-let cardCollections: string[] = [];
-
-const reindex = async (flashCardRoot: string) => {
-  let nextCardIndexMapCache: CardIndexMap = {};
+  const flashCardRoot = PATH.join(dbRoot, 'flash_cards');
   const res = await fs.readdir(flashCardRoot);
   for (let dir of res) {
     if (dir.startsWith('.') || dir.endsWith('json')) {
@@ -49,62 +39,38 @@ const reindex = async (flashCardRoot: string) => {
       const cardBuf = await fs.readFile(PATH.join(cardDir, childFile));
       try {
         const card: FlashCard = JSON.parse(cardBuf.toString());
-        nextCardIndexMapCache[dir] = card.front.word;
-        // console.log('addIndex:', dir, ", word:", card.front.word);
+        console.log('save card:', card);
+        cardCollections.add(card.front.word);
+        await saveCard(card);
       } catch (e) {
-        fs.unlink(PATH.join(cardDir, childFile));
+        // fs.unlink(PATH.join(cardDir, childFile));
+        console.log('saveCard error:', e);
       }
     }
   }
-  cardIndexMapCache = nextCardIndexMapCache;
-  cardCollections = [...new Set(Object.values(cardIndexMapCache))];
-  flashCardMiniSearch.removeAll();
-  const indexList = cardCollections.map((id) => {
+  const indexList = [...cardCollections].map((id) => {
     return { id };
   });
   console.log('indexList:', indexList);
   addSearchItems(indexList);
-  //  console.log(nextCardIndexMapCache);
-  writeJSON(cardIndexMapCache, PATH.join(flashCardRoot, 'index.json'));
 }
 
-
-dbRoot$.subscribe({
-  next(dbRoot) {
-    const L1 = PATH.join(dbRoot, 'flash_cards');
-    const resourceDir = PATH.join(dbRoot, 'resource');
-    (async () => {
-      await mkdir(L1);
-      await mkdir(resourceDir);
-      await reindex(L1);
-    })();
-    // const cardIndexMapPromise = fs
-    //   .readFile(PATH.join(L1, 'index.json'))
-    //   .then((buf) => {
-    //     return JSON.parse(buf.toString()) as CardIndexMap;
-    //   })
-    //   .catch(() => {
-    //     return {};
-    //   });
-
-    // cardIndexMapPromise
-    //   .then((cardIndexMap: { [prop: string]: string }) => {
-    //     cardIndexMapCache = cardIndexMap;
-    //     const collectionKeywordList = [...new Set(Object.values(cardIndexMap))];
-    //     cardCollections = collectionKeywordList;
-    //     const indexList = collectionKeywordList.map((id) => {
-    //       return { id };
-    //     });
-    //     addSearchItems(indexList);
-    //   })
-    //   .catch((e) => {
-    //     console.log('加载全部卡片集失败！');
-    //   });
+db$.subscribe({
+  async next(db) {
+    if (db) {
+      const { c } = await db.get(`select count(1) as c from flash_card`);
+      console.log('count of flash_card:', c, typeof c);
+      if (c === 0) {
+        reindex();
+      } else {
+        const titles = await db.all(`select distinct title from flash_card`);
+        addSearchItems(titles.map(({title}) => {
+          return {id: base64ToString(title)};
+        }));
+      }
     }
-});
-  
-
-const ids: any = {};
+  },
+})
 
 const flashCardMiniSearch = new MiniSearch<FlashCardSearchItem>({
   fields: ['id'], // fields to index for full-text search
@@ -112,14 +78,16 @@ const flashCardMiniSearch = new MiniSearch<FlashCardSearchItem>({
   tokenize: (s) => s.split(/\W/),
 });
 
+const addedTitles: any = {}; // 已索引的卡片标题集合
 export const addSearchItems = (items: FlashCardSearchItem[]) => {
   items = items.filter(({ id }) => {
-    return ids[id] === undefined;
+    return addedTitles[id] === undefined;
   });
   if (items.length > 0) {
     flashCardMiniSearch.addAll(items);
     items.forEach(({ id }) => {
-      ids[id] = true;
+      addedTitles[id] = true;
+      cardCollections.add(id);
     });
   }
 };
@@ -130,48 +98,44 @@ export const searchFlashCardCollections = (keyword: string) => {
   return searchResult;
 };
 
-export const getAllCardCollections = () => cardCollections;
+export const getAllCardCollections = () => {
+  return [...cardCollections];
+};
 
 export const saveCard = async (cardToSave: FlashCard) => {
-  // saveCard$.next(cardToSave);
   // 加入到搜索库
   addSearchItems([
     {
       id: cardToSave.front.word,
     },
   ]);
-  // 保存卡片。
-  cardToSave.clean = false;
-  cardToSave.hasChanged = false;
   const keyword = cardToSave.front.word;
-  const collectionId = uuidv5(keyword, CARD_COLLECTION_NAMESPACE);
-  cardIndexMapCache[collectionId] = keyword;
-  const collectionKeywordList = [...new Set(Object.values(cardIndexMapCache))];
-  cardCollections = collectionKeywordList;
-  const L1 = await getFlashCardDir();
-  if (!L1) {
-    return;
-  }
-  const dir = PATH.join(L1, collectionId);
-  return mkdir(dir)
-    .then(() => {
-      const _cardToSave = { ...cardToSave, hasChanged: false };
-      console.log('cardToSave:', _cardToSave);
-      return fs.writeFile(
-        PATH.join(dir, `${_cardToSave.id}.json`),
-        JSON.stringify(_cardToSave)
-      );
-    })
-    .then(() => {
-      return fs.writeFile(
-        PATH.join(L1, 'index.json'),
-        JSON.stringify(cardIndexMapCache)
-      );
-    })
-    .then(() => {
-      cardToSave.hasChanged = false;
-    })
-    .catch((e) => {
-      console.log('保存卡片失败:', e);
-    });
+  const db = await firstValueFrom(db$);
+    try {
+      await db.exec(`INSERT INTO flash_card VALUES (
+        '${cardToSave.id}', 
+        '${stringToBase64(keyword)}', 
+        '${objectToBase64(cardToSave.front.subtitles)}', 
+        '${objectToBase64(cardToSave.front.pdfNote)}', 
+        '${stringToBase64(cardToSave.back)}', 
+        ${cardToSave.dueDate}, 
+        ${cardToSave.interval}, 
+        ${cardToSave.repetition}, 
+        ${cardToSave.efactor}, 
+        ${Date.now()},
+        ${Date.now()}
+      )`);
+    } catch(e) {
+      await db.exec(`UPDATE flash_card SET 
+      title='${stringToBase64(keyword)}',
+      subtitles='${objectToBase64(cardToSave.front.subtitles)}',
+      pdfNote='${objectToBase64(cardToSave.front.pdfNote)}',
+      back='${stringToBase64(cardToSave.back)}',
+      dueDate=${cardToSave.dueDate},
+      interval=${cardToSave.interval},
+      repetition=${cardToSave.repetition},
+      efactor=${cardToSave.efactor},
+      updateTime=${Date.now()}
+    WHERE id='${cardToSave.id}' `);
+    }
 };

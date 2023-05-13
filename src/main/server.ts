@@ -8,7 +8,7 @@ import path from 'path';
 import { getSubtitleOfVideo, loadFromFileWithoutCache } from './src/subtitle';
 import { Ass } from './src/subtitle/ass/ass';
 import bodyParser from 'body-parser';
-import { getCardCollection } from './src/card/getCardCollection';
+import { cardsByPage, deleteCardById, getCardCollection, getCardToReview } from './src/card/getCardCollection';
 import { getAllCardCollections, saveCard, searchFlashCardCollections } from './src/card/searchCardCollection';
 import WebSocket from 'ws';
 // const streamer = require("./node-http-streamer/index.js");
@@ -102,6 +102,8 @@ app.get('/manifest.json', (req, res) => {
 });
 
 app.use((req, res, next) => {
+  next();
+  return;
   console.log('in root middleware, req.path:', req.path);
   if (req.path === '/') {
     next();
@@ -214,18 +216,23 @@ app.get('/api/reload/video/subtitle/:filePath', (req, res) => {
   });
 });
 
-app.get('/api/card/:collectionName', (req, res) => {
-  getCardCollection(req.params.collectionName)
-  .then((result) => {
-    res.json(result);
-  }).catch(e => {
-    res.status(500);
+app.get('/api/review/card/:time', (req, res) => {
+  getCardToReview(parseInt(req.params.time) || Date.now()).then((data) => {
+    res.json(data);
+  }).catch(() => {
     res.json([]);
   });
 });
 
-app.get('/api/card', (req, res) => {
-  res.json(getAllCardCollections());
+app.delete('/api/card/:cardId', (req, res) => {
+  console.log('delete card by id:', req.params.cardId);
+  deleteCardById(req.params.cardId)
+  .then((r) => {
+    res.json(r);
+  }).catch(e => {
+    res.status(500);
+    res.json(e.message);
+  });
 });
 
 app.get('/api/card/collectionName/:search', (req, res) => {
@@ -236,6 +243,30 @@ app.get('/api/card/collectionName/:search', (req, res) => {
   } else {
     res.status(400);
   }
+});
+
+app.get('/api/card/:pageSize/:pageNumber', (req, res) => {
+  cardsByPage(parseInt(req.params.pageSize), parseInt(req.params.pageNumber)).then((data) => {
+    res.json(data);
+  }).catch(() => {
+    res.json([]);
+  });
+});
+
+app.get('/api/card/:collectionName', (req, res) => {
+  console.log('getCardCollection:', req.params.collectionName);
+  getCardCollection(req.params.collectionName)
+  .then((result) => {
+    console.log('getCardCollection result:', result);
+    res.json(result);
+  }).catch(e => {
+    res.status(500);
+    res.json([]);
+  });
+});
+
+app.get('/api/card', (req, res) => {
+  res.json(getAllCardCollections());
 });
 
 app.post('/api/card', (req, res) => {
