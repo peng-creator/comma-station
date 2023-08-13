@@ -2,7 +2,7 @@ import PATH from 'path';
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import { dbRoot$ } from '../state';
-import { filter, from, shareReplay, switchMap } from 'rxjs';
+import { EMPTY, catchError, filter, from, shareReplay, switchMap } from 'rxjs';
 
 sqlite3.verbose();
 
@@ -40,6 +40,10 @@ export const db$ = dbRoot$.pipe(
             return db;
         }
         return from(initDB());
+    }),
+    catchError((e) => {
+        console.log('load db failed: ', e);
+        return EMPTY;
     }),
     shareReplay(1),
 );

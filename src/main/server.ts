@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import { ZoneDefinition } from './src/types/Zone';
-import { loadDirChildren } from './src/resourceLoader';
+import { loadDirChildren, searchFiles } from './src/resourceLoader';
 import express from 'express';
 import expressWs from 'express-ws';
 import cors from 'cors';
@@ -17,9 +17,10 @@ import { networkInterfaces } from 'os';
 import { promises as fs } from 'fs';
 import { getRecords, saveRecord } from './src/record/record';
 import cookieParser from 'cookie-parser';
-import { firstValueFrom } from 'rxjs';
+import { Subject, firstValueFrom } from 'rxjs';
 import { dbRoot$ } from './state';
 import * as http from 'http';
+import FileHound from 'filehound';
 
 let sessionId = '';
 ipcMain.on('ipc-on-session-id-change', async (event, arg) => {
@@ -134,6 +135,20 @@ app.use((req, res, next) => {
 });
 
 expressWs(app);
+
+app.post('/api/resource/search', (req, res) => {
+  firstValueFrom(dbRoot$).then((dbRoot) => {
+    if (!dbRoot) {
+      res.status(404);
+      return;
+    }
+    const { fileName } = req.body;
+    const searchResult = searchFiles(fileName);
+    res.send(searchResult.map(({id}) => {
+      return id;
+    }));
+  });
+});
 
 app.get('/api/resource/children', (req, res) => {
   loadDirChildren('').then((data) => {
