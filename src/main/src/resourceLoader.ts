@@ -49,9 +49,9 @@ export const loadDirChildren = async (dir: string) => {
         }
       }
       return {
-        dirs,
-        videos,
-        pdfs,
+        dirs: dirs.sort(),
+        videos: videos.sort(),
+        pdfs: pdfs.sort(),
       };
     })
     .catch((e) => {

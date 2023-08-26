@@ -95,14 +95,21 @@ const getAssetPath = (...paths: string[]): string => {
   return path.join(RESOURCES_PATH, ...paths);
 };
 
-ipcMain.on('ipc-open-comma', async (event, arg) => {
+const openChildWindow = (url: string, fullscreen = false) => {
   const win = new BrowserWindow({
+    fullscreen,
     width: 1024,
     height: 728,
     icon: getAssetPath('icon.png'),
   });
-  win.loadURL(arg[0]);
+  win.loadURL(url);
   win.menuBarVisible = false;
+  win.on('ready-to-show', () => {
+      win.show();
+  });
+};
+ipcMain.on('ipc-open-comma', (event, arg) => {
+  openChildWindow(arg[0]);
 });
 
 
@@ -132,6 +139,7 @@ const createWindow = async () => {
     } else {
       mainWindow.show();
     }
+    openChildWindow('http://localhost:8080', true);
   });
 
   mainWindow.on('closed', () => {

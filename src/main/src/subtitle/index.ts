@@ -90,9 +90,9 @@ export const getSubtitleOfVideo = async (videoPath: string) => {
           return subtitle;
         });
         console.log('filtered:', filtered);
-        const mergedSubtitles = mergeWithComma(mergeNonePunctuations(filtered));
-        writeJSON(mergedSubtitles, cachePath);
-        return mergedSubtitles;
+        // const mergedSubtitles = mergeWithComma(mergeNonePunctuations(filtered));
+        writeJSON(filtered, cachePath);
+        return filtered;
       })
       .catch((e: any) => {
         console.log(
@@ -127,7 +127,8 @@ export const loadFromFileWithoutCache = async (videoPath: string) => {
       return subtitle;
     });
     console.log('filtered:', filtered);
-    return mergeWithComma(mergeNonePunctuations(filtered));
+    // return mergeWithComma(mergeNonePunctuations(filtered));
+    return filtered;
   })
   .then((subtitles) => {
     return subtitles
