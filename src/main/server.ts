@@ -24,6 +24,7 @@ import { ITitle, getTitleDetailsByName } from './src/utils/movier';
 import axios from 'axios';
 import { Genre, MovieDb, ShowResponse, TvResult, TvSeasonResponse } from 'moviedb-promise';
 import { base64ToObject, base64ToString, db$, objectToBase64, stringToBase64, thirdPartyData$ } from './src/db';
+import { askAI } from './src/baiduAI';
 
 const moviedb = new MovieDb('f790dc45ae971d00e9a722b395174107');
 
@@ -61,6 +62,41 @@ app.get('/access/:code', (req, res) => {
   }
   res.redirect('/');
 });
+
+app.use((req, res, next) => {
+  next();
+  if (!configStore.enableAccessControl) {
+    return;
+  }
+  console.log('in root middleware, req.path:', req.path);
+  if (req.path === '/') {
+    next();
+    return;
+  }
+  const { sessionId: _sessionId } = req.cookies;
+  console.log('in root middleware, sessionId:', _sessionId);
+  if (_sessionId === sessionId) {
+    console.log('valid request');
+    next();
+    return;
+  }
+  if (req.path.startsWith('/static/')) {
+    next();
+    return;
+  }
+  if (req.path.startsWith('/assets/')) {
+    next();
+    return;
+  }
+  if (['/assets/icon/favicon.png'].includes(req.path)) {
+    next();
+    return;
+  }
+  console.log('invalid request');
+  res.status(401);
+  res.send('请扫描Comma Station二维码重新访问');
+});
+
 
 const tryGetFromCache = async <T>(key: string, getFreshData: () => Promise<T>, serialize: (data: T) => string = (data) => JSON.stringify(data), deserialize: (str: string) => T = (str: string) => (JSON.parse(str) as T)) => {
   const db = await firstValueFrom(thirdPartyData$);
@@ -354,38 +390,6 @@ app.get('/manifest.json', (req, res) => {
   );
 });
 
-app.use((req, res, next) => {
-  next();
-  return;
-  console.log('in root middleware, req.path:', req.path);
-  if (req.path === '/') {
-    next();
-    return;
-  }
-  const { sessionId: _sessionId } = req.cookies;
-  console.log('in root middleware, sessionId:', _sessionId);
-  if (_sessionId === sessionId) {
-    console.log('valid request');
-    next();
-    return;
-  }
-  if (req.path.startsWith('/static/')) {
-    next();
-    return;
-  }
-  if (req.path.startsWith('/assets/')) {
-    next();
-    return;
-  }
-  if (['/assets/icon/favicon.png'].includes(req.path)) {
-    next();
-    return;
-  }
-  console.log('invalid request');
-  res.status(401);
-  res.send('请扫描Comma Station二维码重新访问');
-});
-
 expressWs(app);
 
 app.post('/api/resource/search', (req, res) => {
@@ -590,6 +594,16 @@ app.get('/api/record', (req, res) => {
   })
 });
 
+app.post('/api/askAI', (req, res) => {
+  console.log('ask ai:', req.body);
+  askAI(configStore.token.access_token, req.body).then((result) => {
+    console.log('ai result:', result);
+    res.send(result);
+  }).catch((e) => {
+    res.status(500);
+    res.send(e);
+  });
+})
 
 
 app.post('/api/error', (req, res) => {

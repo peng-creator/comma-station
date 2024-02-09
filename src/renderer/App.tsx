@@ -3,12 +3,30 @@ import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import qrcode from 'qrcode-generator';
 import { v4 as uuidv4 } from "uuid";
-import { Button } from 'antd';
+import { Button, Input } from 'antd';
 
 const initDbRoot = localStorage.getItem('dbRoot');
 
 if (initDbRoot !== null) {
   window.electron.ipcRenderer.sendMessage('ipc-on-got-db-root', [initDbRoot]);
+}
+
+async function postData(url = "", data = {}) {
+  // Default options are marked with *
+  const response = await fetch(url, {
+    method: "POST", // *GET, POST, PUT, DELETE, etc.
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    credentials: "same-origin", // include, *same-origin, omit
+    headers: {
+      "Content-Type": "application/json",
+      // 'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    redirect: "follow", // manual, *follow, error
+    referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+    body: JSON.stringify(data), // body data type must match "Content-Type" header
+  });
+  return response.json(); // parses JSON response into native JavaScript objects
 }
 
 const Main = () => {
@@ -19,7 +37,37 @@ const Main = () => {
 
   const [configStore, setConfigStore] = useState<any>({});
   const [showAccessCode, setShowAccessCode] = useState(false);
+  const [enableAccessControl, setEnableAccessControl] = useState(false);
+  const [appId, setAppId] = useState('');
+  const [secretKey, setSecretKey] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [token, setToken] = useState({});
 
+  useEffect(() => {
+    const appId = localStorage.getItem('appId') || '';
+    const secretKey = localStorage.getItem('secretKey') || '';
+    const apiKey = localStorage.getItem('apiKey') || '';
+    setAppId(appId);
+    setSecretKey(secretKey);
+    setApiKey(apiKey);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('appId', appId);
+    localStorage.setItem('secretKey', secretKey);
+    localStorage.setItem('apiKey', apiKey);
+    setConfigStore({...configStore, appId, apiKey, secretKey, });
+    if (appId && secretKey && apiKey) {
+      postData(`https://aip.baidubce.com/oauth/2.0/token?client_id=${apiKey}&client_secret=${secretKey}&grant_type=client_credentials`, {})
+      .then((res) => {
+        setToken(res);
+        setConfigStore({...configStore, token: res });
+      })
+    }
+  }, [appId,
+    secretKey,
+    apiKey,]);
+  
   useEffect(() => {
     if (sessionId) {
       localStorage.setItem('sessionId', sessionId);
@@ -58,6 +106,7 @@ const Main = () => {
         justifyContent: 'center',
         width: '100%',
         padding: '20px',
+        paddingBottom: '40px'
       }}
     >
       <h1 style={{
@@ -124,10 +173,15 @@ const Main = () => {
       <h2 style={{
         color: '#fff',
         marginTop: '14px'
-      }}>安全</h2>
+      }}>安全 <Button onClick={() => {
+        setEnableAccessControl(!enableAccessControl);
+        setConfigStore({...configStore, enableAccessControl: !enableAccessControl});
+      }}>{enableAccessControl ? '关闭' : '打开'}</Button></h2>
       <div style={{height: '0.5px', background: '#fff'}}></div>
-      <div style={{padding: '14px'}}>
-        <div style={{marginTop: '14px'}}>访问码：客户端需要输入访问码才可以连接成功。谨防数据泄露，请勿将访问码传于他人！ {!showAccessCode && <Button onClick={() => {
+      {enableAccessControl ? '安全模式已打开，客户端需要输入访问码才可以连接成功。' : '安全模式已关闭'}
+      {enableAccessControl &&
+        <div style={{padding: '14px'}}>
+        <div style={{marginTop: '14px'}}>访问码：谨防数据泄露，请勿将访问码传于他人！ {!showAccessCode && <Button onClick={() => {
           const newAccessCode = () => {
             const code = (parseInt(Math.random() * 10000 + '') + '').padStart(4, '0');
             setConfigStore({...configStore, accessCode: code});
@@ -152,6 +206,29 @@ const Main = () => {
               setShowSessionRefreshMsg(false);
             }, 5000);
           }}>重开会话</Button>
+        </div>
+      </div>
+      }
+      <h2 style={{
+        color: '#fff',
+        marginTop: '14px'
+      }}>百度AI大模型API设置</h2>
+      <div style={{height: '0.5px', background: '#fff'}}></div>
+      <div style={{background: 'rgba(0,0,0,.3)', padding: '15px'}}>
+        <a href="https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application" >点击此链接在百度智能云平台创建应用，获取下面信息：</a> 
+        <div style={{marginTop: '12px', display: 'flex', flexDirection: 'column', height: '160px', justifyContent: 'space-around'}}>
+          <div style={{display: 'flex'}}>
+            <span style={{margin: '12px', width: '100px'}}>AppID</span>
+            <Input value={appId} onChange={(e) => {setAppId(e.target.value)}}></Input>
+          </div>
+          <div style={{display: 'flex'}}>
+            <span style={{margin: '12px', width: '100px'}}>API Key</span>
+            <Input value={apiKey} onChange={(e) => {setApiKey(e.target.value)}}></Input>
+          </div>
+          <div style={{display: 'flex'}}>
+            <span style={{margin: '12px', width: '100px'}}>Secret Key</span>
+            <Input value={secretKey} onChange={(e) => {setSecretKey(e.target.value)}}></Input>
+          </div>
         </div>
       </div>
     </div>
