@@ -24,7 +24,8 @@ import { ITitle, getTitleDetailsByName } from './src/utils/movier';
 import axios from 'axios';
 import { Genre, MovieDb, ShowResponse, TvResult, TvSeasonResponse } from 'moviedb-promise';
 import { base64ToObject, base64ToString, db$, objectToBase64, stringToBase64, thirdPartyData$ } from './src/db';
-import { askAI } from './src/baiduAI';
+import { https } from 'follow-redirects';
+
 
 const moviedb = new MovieDb('f790dc45ae971d00e9a722b395174107');
 
@@ -596,13 +597,38 @@ app.get('/api/record', (req, res) => {
 
 app.post('/api/askAI', (req, res) => {
   console.log('ask ai:', req.body);
-  askAI(configStore.token.access_token, req.body).then((result) => {
-    console.log('ai result:', result);
-    res.send(result);
-  }).catch((e) => {
-    res.status(500);
-    res.send(e);
+  res.writeHead(200, {
+    "Connection": "keep-alive",
+    "Cache-Control": "no-cache",
+    "Content-Type": "text/event-stream",
   });
+  const options = {
+    'method': 'POST',
+    'hostname': 'aip.baidubce.com',
+    'path': '/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=' + configStore.token.access_token,
+    'headers': {
+        'Content-Type': 'application/json'
+    },
+    'maxRedirects': 20
+  };
+
+  const _req = https.request(options, function (_res: any) {
+    _res.on("data", function (chunk: any) {
+      console.log('on data:', chunk.toString());
+      res.write(chunk.toString());
+    });
+
+    _res.on("end", function () {
+      res.end();
+    });
+
+    _res.on("error", function (error: any) {
+      res.status(500);
+      res.send(error);
+    });
+  });
+  _req.write(JSON.stringify(req.body));
+  _req.end();
 })
 
 

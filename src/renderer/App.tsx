@@ -41,7 +41,6 @@ const Main = () => {
   const [appId, setAppId] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [token, setToken] = useState({});
 
   useEffect(() => {
     const appId = localStorage.getItem('appId') || '';
@@ -58,11 +57,12 @@ const Main = () => {
     localStorage.setItem('apiKey', apiKey);
     setConfigStore({...configStore, appId, apiKey, secretKey, });
     if (appId && secretKey && apiKey) {
-      postData(`https://aip.baidubce.com/oauth/2.0/token?client_id=${apiKey}&client_secret=${secretKey}&grant_type=client_credentials`, {})
+      const refreshToken = () => postData(`https://aip.baidubce.com/oauth/2.0/token?client_id=${apiKey}&client_secret=${secretKey}&grant_type=client_credentials`, {})
       .then((res) => {
-        setToken(res);
         setConfigStore({...configStore, token: res });
-      })
+        setTimeout(() => refreshToken(), res.expires_in);
+      });
+      refreshToken();
     }
   }, [appId,
     secretKey,
