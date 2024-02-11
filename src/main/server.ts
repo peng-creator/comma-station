@@ -605,7 +605,7 @@ app.post('/api/askAI', (req, res) => {
   const options = {
     'method': 'POST',
     'hostname': 'aip.baidubce.com',
-    'path': '/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=' + configStore.token.access_token,
+    'path': '/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/eb-instant?access_token=' + configStore.token.access_token,
     'headers': {
         'Content-Type': 'application/json'
     },
