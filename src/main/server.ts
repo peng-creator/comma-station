@@ -43,6 +43,7 @@ ipcMain.on('ipc-on-config-store-change', (event, arg) => {
   }
 });
 
+const ariaNgHome = path.resolve(__dirname, '../../AriaNg');
 const webHome = path.resolve(__dirname, '../../comma-web');
 
 const app = express();
@@ -55,7 +56,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json({
   limit: '10mb'
 }));
-
+app.use('/aria', express.static(ariaNgHome));
 app.get('/access/:code', (req, res) => {
   console.log('access code:', req.params.code);
   if (req.params.code === configStore.accessCode) {
