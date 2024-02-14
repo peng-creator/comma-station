@@ -223,7 +223,8 @@
       "dist",
       "node_modules",
       "package.json",
-      "comma-web"
+      "comma-web",
+      "AriaNg"
     ],
     "afterSign": ".erb/scripts/notarize.js",
     "mac": {
