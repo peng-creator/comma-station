@@ -6,7 +6,6 @@ export function parseText(text: string) {
   if (pairs[0].length) {
     parsed.push({ tags: [], text: pairs[0], drawing: [] });
   }
-  console.log('pairs:', pairs);
   for (let i = 1; i < pairs.length; i += 2) {
     const isDrawing = isDraw(pairs[i]);
     if (isDrawing) {

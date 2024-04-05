@@ -2,7 +2,7 @@ import "reflect-metadata"
 import { And, Between, DataSource, LessThanOrEqual, MoreThanOrEqual } from "typeorm"
 import { User } from "./entity/User"
 import { dbRoot$ } from "../../state";
-import { combineLatest, firstValueFrom, from, mergeAll, mergeMap, shareReplay, switchMap } from "rxjs";
+import { combineLatest, filter, firstValueFrom, from, mergeAll, mergeMap, shareReplay, switchMap } from "rxjs";
 import path from "path";
 import { File } from "./entity/File";
 import { Card } from "./entity/Card";
@@ -65,8 +65,14 @@ combineLatest([datasource$, files$, dbRoot$]).subscribe({
         // load files with levels
         const uuid = randomUUID(); // epoch of indexing the files
         // clear old data
-        datasource.manager.createQueryBuilder().delete().from(File).where("epoch != :epoch", {epoch: uuid}).execute();
+        // datasource.manager.createQueryBuilder().delete().from(File).where("epoch != :epoch", {epoch: uuid}).execute();
         from(files.filter((file) => file.endsWith('.mp4')).map(async file => {
+            const result = await datasource.manager.findOneBy(File, {
+                path: '/' + file,
+            });
+            if (result) {
+                return null;
+            }
             const videoPath = path.join(dbRoot, 'resource', file); 
             const subtitles = await loadFromFileWithoutCache(videoPath);
             const level = await getLevel(JSON.stringify(subtitles));
@@ -75,8 +81,12 @@ combineLatest([datasource$, files$, dbRoot$]).subscribe({
                 file,
                 level,
             };
-        }).map(fileLevelPromise => from(fileLevelPromise))).pipe(mergeAll(2)).subscribe({
-            next({file, level}) {
+        }).map(fileLevelPromise => from(fileLevelPromise))).pipe(mergeAll(10)).subscribe({
+            next(fileLevel) {
+                if (fileLevel === null) {
+                    return;
+                }
+                const {file, level} = fileLevel;
                 const fileDO = new File();
                 fileDO.epoch = uuid;
                 fileDO.path = '/' + file;
