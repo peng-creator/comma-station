@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import { dbRoot$ } from '../state';
 import PATH from 'path';
-import { firstValueFrom } from 'rxjs';
+import { EMPTY, Subject, firstValueFrom, share, switchMap, tap } from 'rxjs';
 import MiniSearch from 'minisearch';
 
 type FileSearchItem = {
@@ -64,10 +64,13 @@ export const loadDirChildren = async (dir: string) => {
     });
 };
 
-dbRoot$.subscribe({
-  next(dbRoot) {
-    console.log('got dbRoot when building fileSearch:', dbRoot);
-    fileMiniSearch.removeAll();
+export const files$ = dbRoot$.pipe(
+  switchMap(dbRoot => {
+    if (!dbRoot) {
+      return EMPTY;
+    }
+    console.log('build files stream on dbroot:', dbRoot);
+    const files$ = new Subject<string[]>();
     const loadFiles = async () => {
       let dirsToSearch = ['./'];
       while(true) {
@@ -76,22 +79,40 @@ dbRoot$.subscribe({
           break;
         }
         const { dirs, videos, pdfs } = await loadDirChildren(dir);
-        fileMiniSearch.addAll([...videos, ...pdfs].map((file) => {
-          if (dir === undefined) {
-            throw new Error('dir to be searched should not be undefined')
-          }
-          return {
-            id: PATH.join(dir, file),
-          };
-        }));
         dirsToSearch = [...dirsToSearch, ...dirs.map((d) => {
           if (dir === undefined) {
             throw new Error('dir to be searched should not be undefined')
           }
           return PATH.join(dir, d);
         })];
+        const files = [...videos, ...pdfs].map((file) => {
+          if (dir === undefined) {
+            throw new Error('dir to be searched should not be undefined')
+          }
+          return  PATH.join(dir, file);
+        });
+        files$.next(files);
       }
     }
     loadFiles();
+    return files$;
+  }),
+  share(),
+);
+
+dbRoot$.pipe(
+  tap(() => {
+    console.log('reset file search engine');
+    fileMiniSearch.removeAll();
+  }),
+  switchMap(() => files$),
+).subscribe({
+  next(files) {
+    console.log('add files to search engine:', files);
+    fileMiniSearch.addAll(files.map((file) => {
+      return {
+        id: file,
+      };
+    }));
   }
 });

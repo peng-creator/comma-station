@@ -15,9 +15,9 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
-import { resolveHtmlPath } from './util';
+import { resolveHtmlPath, getAssetPath } from './util';
 import { logToFile } from './log';
-import { dbRoot$ } from './state';
+import { _dbRoot$, dbRoot$ } from './state';
 
 export default class AppUpdater {
   constructor() {
@@ -58,7 +58,7 @@ const installExtensions = async () => {
 ipcMain.on('ipc-on-got-db-root', async (event, arg) => {
   logToFile('ipc-on-got-db-root:', arg);
   if (arg.length > 0) {
-    dbRoot$.next(arg[0]);
+    _dbRoot$.next(arg[0]);
   }
 });
 
@@ -75,7 +75,7 @@ ipcMain.on('ipc-select-dir', async (event, arg) => {
     .then(({ filePaths }) => {
       if (filePaths && filePaths.length > 0) {
         event.reply('ipc-select-dir', filePaths[0]);
-        dbRoot$.next(filePaths[0]);
+        _dbRoot$.next(filePaths[0]);
       }
     })
     .catch((e) => {
@@ -87,13 +87,6 @@ ipcMain.on('ipc-show-dir', async (event, arg) => {
   shell.showItemInFolder(arg[0]);
 });
 
-const RESOURCES_PATH = app.isPackaged
-? path.join(process.resourcesPath, 'assets')
-: path.join(__dirname, '../../assets');
-
-const getAssetPath = (...paths: string[]): string => {
-  return path.join(RESOURCES_PATH, ...paths);
-};
 
 const openChildWindow = (url: string, fullscreen = false) => {
   const win = new BrowserWindow({

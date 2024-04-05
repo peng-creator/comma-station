@@ -4,6 +4,7 @@ import { Ass } from './ass/ass';
 import { srtToSubtitle } from './srt/srt';
 import { writeJSON } from '../JsonDB';
 import { mergeNonePunctuations, mergeWithComma } from './merge';
+import { Subtitle } from '../types/Subtitle';
 
 const loadFromFile = async (srtFilePath: string, assFilePath: string) => {
   return Promise.all([
@@ -51,7 +52,7 @@ const getFilePath = async (videoPath: string) => {
   }).sort();
   const indexOfCurrentVideo = mp4List.indexOf(path.basename(videoPath));
   if (indexOfCurrentVideo === -1) {
-    throw new Error('没找到当前视频文件！');
+    throw new Error('没找到当前视频文件！' + videoPath);
   }
   const assFilName = assList[indexOfCurrentVideo];
   const srtFileName = srtList[indexOfCurrentVideo];
@@ -89,7 +90,6 @@ export const getSubtitleOfVideo = async (videoPath: string) => {
           subtitle.subtitles = subtitle.subtitles.filter((s) => s.trim().length > 0);
           return subtitle;
         });
-        console.log('filtered:', filtered);
         // const mergedSubtitles = mergeWithComma(mergeNonePunctuations(filtered));
         writeJSON(filtered, cachePath);
         return filtered;
@@ -126,7 +126,6 @@ export const loadFromFileWithoutCache = async (videoPath: string) => {
       subtitle.subtitles = subtitle.subtitles.filter((s) => s.trim().length > 0);
       return subtitle;
     });
-    console.log('filtered:', filtered);
     // return mergeWithComma(mergeNonePunctuations(filtered));
     return filtered;
   })
@@ -135,7 +134,7 @@ export const loadFromFileWithoutCache = async (videoPath: string) => {
       .filter((s: any) => s.subtitles.length > 0)
       .map((sub: any, index: number) => {
         sub.id = index;
-        return sub;
+        return sub as Subtitle;
       });
   }).catch(e => []);
 };

@@ -1,3 +1,6 @@
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, filter } from 'rxjs';
 
-export const dbRoot$ = new BehaviorSubject('');
+export const _dbRoot$ = new BehaviorSubject('');
+export const dbRoot$ = _dbRoot$.pipe(
+    filter(dbRoot => dbRoot !== ''),
+)

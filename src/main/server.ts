@@ -25,7 +25,13 @@ import axios from 'axios';
 import { Genre, MovieDb, ShowResponse, TvResult, TvSeasonResponse } from 'moviedb-promise';
 import { base64ToObject, base64ToString, db$, objectToBase64, stringToBase64, thirdPartyData$ } from './src/db';
 import { https } from 'follow-redirects';
+import { datasource$, getFilesOfLevel } from './src/data/data-source';
 
+datasource$.subscribe({
+  next(datasource) {
+    // console.log('got datasource:', datasource);
+  }
+})
 
 const moviedb = new MovieDb('f790dc45ae971d00e9a722b395174107');
 
@@ -369,6 +375,16 @@ app.get('/ipaddress', (req, res) => {
     }
   }
   res.send(results[0] || '');
+});
+
+app.get('/api/level/:level/video', (req, res) => {
+  const level = parseInt(req.params.level);
+  getFilesOfLevel(level).then((files) => {
+    res.json(files);
+  }).catch(e => {
+    console.log('get video of level failed:', e);
+    res.json([]);
+  })
 });
 
 app.get('/manifest.json', (req, res) => {

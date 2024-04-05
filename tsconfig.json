@@ -19,7 +19,9 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "allowJs": true,
-    "outDir": "release/app/dist"
+    "outDir": "release/app/dist",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true
   },
   "rules": {
     "import/prefer-default-export": "off"
