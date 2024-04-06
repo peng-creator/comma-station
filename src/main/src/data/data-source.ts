@@ -11,6 +11,7 @@ import { loadFromFileWithoutCache } from "../subtitle";
 import { randomUUID } from "crypto";
 import fs from 'fs';
 import { getAssetPath } from "../../util";
+import { logToFile } from '../../log';
 
 
 const wordRanks = JSON.parse(fs.readFileSync(getAssetPath('words.json'),).toString())
@@ -20,7 +21,7 @@ const wordRanks = JSON.parse(fs.readFileSync(getAssetPath('words.json'),).toStri
     }, {});
 
 let _datasource: DataSource;
-let _datasourceF: DataSource;
+let _FDatasource: DataSource;
 
 export const datasource$ = dbRoot$.pipe(
     switchMap((dbRoot) => {
@@ -28,7 +29,8 @@ export const datasource$ = dbRoot$.pipe(
             type: "sqlite",
             database: path.join(dbRoot, "database.sqlite"),
             synchronize: true,
-            logging: false,
+            logger: "file",
+            logging: true,
             entities: [
                 User,
                 File,
@@ -38,7 +40,7 @@ export const datasource$ = dbRoot$.pipe(
             subscribers: [],
         });
         _datasource = appDataSource;
-        console.log('init _datasource on dbRoot:', dbRoot);
+        logToFile('init _datasource on dbRoot:', dbRoot);
         return from(appDataSource.initialize().then(() => appDataSource));
     }),
     shareReplay(1),
@@ -80,18 +82,18 @@ combineLatest([datasource$, files$.pipe(bufferTime(10000)), dbRoot$])
             filter((file) => file.endsWith('.mp4')),
             map((file) => {
                 const loadLevelForFile = async (file: string) => {
-                    // console.log('check levels of file:', file);
+                    // logToFile('check levels of file:', file);
                     const result = await datasource.manager.findOneBy(File, {
                         path: '/' + file,
                     });
                     if (result) {
-                        // console.log('file', file, 'already added');
+                        // logToFile('file', file, 'already added');
                         return null;
                     }
                     const videoPath = path.join(dbRoot, 'resource', file);
                     const subtitles = await loadFromFileWithoutCache(videoPath);
                     const level = await getLevel(JSON.stringify(subtitles));
-                    console.log('level of file:', file, ' is: ', level);
+                    logToFile('level of file:', file, ' is: ', level);
                     return {
                         file,
                         level,
@@ -99,7 +101,7 @@ combineLatest([datasource$, files$.pipe(bufferTime(10000)), dbRoot$])
                 }
                 return () => loadLevelForFile(file);
             }),
-            map((toLoad) => { 
+            map((toLoad) => {
                 return new Observable<{file: string; level: number}>((observer) => {
                     toLoad().then((fileLevel) => {
                         if (fileLevel !== null) {
@@ -133,7 +135,7 @@ combineLatest([datasource$, files$.pipe(bufferTime(10000)), dbRoot$])
 )
 .subscribe({
     next([datasource, fileLevels]) {
-        _datasourceF = datasource;
+      _FDatasource = datasource;
         // load files with levels
         const uuid = randomUUID(); // epoch of indexing the files
         const fileDoList = fileLevels.filter(item => item !== null && item !== undefined).map((fileLevel) => {
@@ -141,18 +143,23 @@ combineLatest([datasource$, files$.pipe(bufferTime(10000)), dbRoot$])
             const fileDO = new File();
             fileDO.epoch = uuid;
             fileDO.path = '/' + file;
-            fileDO.level = level;
+            fileDO.level = parseInt(level + '', 10);
             return fileDO;
           });
           if (fileDoList.length === 0) {
             return;
           }
+
+          logToFile('saving fileDoList to datasource:', fileDoList);
           datasource.manager.find(File).then((files) => {
             let beforeLength = files.length;
+            logToFile('length before adding:', beforeLength);
             datasource.manager.save(fileDoList).then(() => {
               return datasource.manager.find(File);
             }).then(res => {
-              console.log('length before adding:', beforeLength, 'table length after adding:', res.length);
+              logToFile('length before adding:', beforeLength, 'table length after adding:', res.length);
+            }).catch(e => {
+              logToFile('saving fileDoList to datasource failed:', e);
             });
           });
     }
@@ -160,8 +167,10 @@ combineLatest([datasource$, files$.pipe(bufferTime(10000)), dbRoot$])
 
 export const getFilesOfLevel = async (queryLevel: number) => {
     const datasource = await firstValueFrom(datasource$);
+    logToFile('datasource === _FDatasource:', datasource === _FDatasource);
+    logToFile('datasource === _datasource:', datasource === _datasource);
     if (!datasource) {
-        console.log('datasource is undefined!');
+        logToFile('datasource is undefined!');
         return [];
     }
     if (queryLevel === 0) {
