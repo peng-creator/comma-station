@@ -33,7 +33,6 @@ export function parse(text: string) {
     else if (/^\[Events\]/i.test(line)) state = 3;
     else if (/^\[.*\]/.test(line)) state = 0;
     if (state !== 3) {
-      console.log('state !==3');
       continue;
     }
     if (state === 3) {

@@ -8,10 +8,8 @@ export function parseAssText(assText: string): Subtitle[] {
   if (parsedASS === null) {
     return [];
   }
-  console.log('parsedAss:', parsedASS);
   try {
     const { dialogue } = parsedASS.events;
-    console.log('parseAssText got dialogue:', dialogue);
     const result = dialogue.map(({ End, Start, Text }, i) => {
       const { parsed } = Text;
       const subtitles = parsed
@@ -43,7 +41,6 @@ export function parseAssText(assText: string): Subtitle[] {
         subtitles,
       };
     });
-    console.log('parseAssText to subtitle list result:', result);
     return result;
   } catch (e) {
     console.error('parseAssText to subtitle list error:', e);
