@@ -22,8 +22,8 @@ const loadFromFile = async (srtFilePath: string, assFilePath: string) => {
     }),
   ])
     .then(([srtRes, assRes]) => {
-      console.log('srtRes length:', srtRes.length);
-      console.log('assRes length:', assRes.length);
+      // console.log('srtRes length:', srtRes.length);
+      // console.log('assRes length:', assRes.length);
       if (srtRes.length > 0) {
         return srtRes;
       }
@@ -37,10 +37,10 @@ const loadFromFile = async (srtFilePath: string, assFilePath: string) => {
 const getFilePath = async (videoPath: string) => {
   const cachePath = `${videoPath.slice(0, -4)}.json`;
   const dir = path.dirname(cachePath);
-  console.log('load children of dir:', dir);
+  // console.log('load children of dir:', dir);
   let dirChildren = await fs.readdir(dir);
   dirChildren = dirChildren.filter((child) => !child.startsWith('.'));
-  console.log('dirChildren:', dirChildren);
+  // console.log('dirChildren:', dirChildren);
   const assList = dirChildren.filter((file) => {
     return path.extname(file).toLowerCase() === '.ass';
   }).sort();

@@ -124,7 +124,7 @@ const tryGetFromCache = async <T>(key: string, getFreshData: () => Promise<T>, s
     }).then((r) => {
       const content = serialize ? serialize(r) : r;
       db.exec(`INSERT INTO third_party_request_cache VALUES (
-        '${stringToBase64(key)}', 
+        '${stringToBase64(key)}',
         '${stringToBase64(content)}'
       )`);
       return r;
@@ -155,7 +155,7 @@ app.get('/api/thirdpartyImage/:url', (req, res) => {
 });
 
 app.post('/api/tv/collections', (req, res) => {
-  const { 
+  const {
     seasonDir,
     videoInfo,
     seasonInfo,
@@ -164,7 +164,7 @@ app.post('/api/tv/collections', (req, res) => {
     videoInfo: {
       summary?: ITitle;
       tvInfo?: ShowResponse;
-      seasonInfoList?: TvSeasonResponse[]; 
+      seasonInfoList?: TvSeasonResponse[];
     };
     seasonInfo: TvSeasonResponse;
   };
@@ -176,11 +176,11 @@ app.post('/api/tv/collections', (req, res) => {
     const season = (await stmt.all({ '@seasonDir': stringToBase64(seasonDir) }))[0];
     try {
       if (season) {
-        const sql = `UPDATE TV_show_collection 
-        set 
-          videoInfo='${objectToBase64(videoInfo)}', 
+        const sql = `UPDATE TV_show_collection
+        set
+          videoInfo='${objectToBase64(videoInfo)}',
           genres='${videoInfo.tvInfo?.genres?.map(g => g.name).join('|')}',
-          seasonInfo='${objectToBase64(seasonInfo)}', 
+          seasonInfo='${objectToBase64(seasonInfo)}',
           updateTime='${Date.now()}'
         where
           seasonDir='${stringToBase64(seasonDir)}'
@@ -191,7 +191,7 @@ app.post('/api/tv/collections', (req, res) => {
         const sql = `INSERT INTO TV_show_collection VALUES (
           '${stringToBase64(seasonDir)}',
           '${videoInfo.tvInfo?.genres?.map(g => g.name).join('|')}',
-          '${objectToBase64(videoInfo)}', 
+          '${objectToBase64(videoInfo)}',
           '${objectToBase64(seasonInfo)}',
           '${Date.now()}'
         )`;
@@ -276,7 +276,7 @@ app.get('/api/searchVideoInfo/:q', (req, res) => {
           for (const { season_number } of seasons) {
             if (season_number) {
               const seasonInfo = await tryGetFromCache(`moviedb.seasonInfo(${id}-${season_number})`, () => moviedb.seasonInfo({
-                id, 
+                id,
                 season_number
               }));
               seasonInfoList.push(seasonInfo);
@@ -456,7 +456,7 @@ app.get('/api/video/subtitle/:filePath', (req, res) => {
       res.json([]);
       return;
     }
-    const videoPath = path.join(dbRoot, 'resource', req.params.filePath); 
+    const videoPath = path.join(dbRoot, 'resource', req.params.filePath);
     console.log('start trying to loading subtitle of video:', videoPath);
     getSubtitleOfVideo(videoPath).then((result) => {
       console.log('send back subtitle of ', videoPath, ', subtitle length:', result.length);
@@ -493,7 +493,7 @@ app.get('/api/reload/video/subtitle/:filePath', (req, res) => {
       res.send('success');
       return;
     }
-    const videoPath = path.join(dbRoot, 'resource', req.params.filePath); 
+    const videoPath = path.join(dbRoot, 'resource', req.params.filePath);
     console.log('start trying to loading subtitle of video:', videoPath);
     loadFromFileWithoutCache(videoPath).then((result) => {
       console.log('send back subtitle of ', videoPath, ', subtitle length:', result.length);
@@ -704,8 +704,8 @@ app.get('/*', (req, res) => {
   }
 });
 // app.listen(8081);
-// const server = https.createServer({ key: selfsignedKeys.private, cert: selfsignedKeys.cert }, app); 
-const server = http.createServer(app);     
+// const server = https.createServer({ key: selfsignedKeys.private, cert: selfsignedKeys.cert }, app);
+const server = http.createServer(app);
 server.listen(8080);
 
 const wsList = new Set<WebSocket>();

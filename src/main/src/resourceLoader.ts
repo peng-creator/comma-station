@@ -108,7 +108,7 @@ dbRoot$.pipe(
   switchMap(() => files$),
 ).subscribe({
   next(files) {
-    console.log('add files to search engine:', files);
+    // console.log('add files to search engine:', files);
     fileMiniSearch.addAll(files.map((file) => {
       return {
         id: file,
