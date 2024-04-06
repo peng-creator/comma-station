@@ -2,7 +2,7 @@ import "reflect-metadata"
 import { And, Between, DataSource, LessThanOrEqual, MoreThanOrEqual } from "typeorm"
 import { User } from "./entity/User"
 import { dbRoot$ } from "../../state";
-import { bufferTime, combineLatest, filter, firstValueFrom, from, mergeAll, mergeMap, shareReplay, switchMap, windowCount, windowTime } from "rxjs";
+import { Observable, Subject, bufferTime, combineLatest, filter, firstValueFrom, from, map, mergeAll, mergeMap, shareReplay, switchMap, tap, windowCount, windowTime } from "rxjs";
 import path from "path";
 import { File } from "./entity/File";
 import { Card } from "./entity/Card";
@@ -73,61 +73,88 @@ const getLevel = async (text: string) => {
 }
 
 // build file levels
-combineLatest([datasource$, files$, dbRoot$]).subscribe({
-    next([datasource, files, dbRoot]) {
+combineLatest([datasource$, files$.pipe(bufferTime(10000)), dbRoot$])
+.pipe(
+    map(([datasource, files, dbRoot]) => {
+        return from(files.flat()).pipe(
+            filter((file) => file.endsWith('.mp4')),
+            map((file) => {
+                const loadLevelForFile = async (file: string) => {
+                    // console.log('check levels of file:', file);
+                    const result = await datasource.manager.findOneBy(File, {
+                        path: '/' + file,
+                    });
+                    if (result) {
+                        // console.log('file', file, 'already added');
+                        return null;
+                    }
+                    const videoPath = path.join(dbRoot, 'resource', file);
+                    const subtitles = await loadFromFileWithoutCache(videoPath);
+                    const level = await getLevel(JSON.stringify(subtitles));
+                    console.log('level of file:', file, ' is: ', level);
+                    return {
+                        file,
+                        level,
+                    };
+                }
+                return () => loadLevelForFile(file);
+            }),
+            map((toLoad) => { 
+                return new Observable<{file: string; level: number}>((observer) => {
+                    toLoad().then((fileLevel) => {
+                        if (fileLevel !== null) {
+                            observer.next(fileLevel);
+                        }
+                    }).finally(() => {
+                        observer.complete();
+                    })
+                });
+            }),
+            mergeAll(1),
+            bufferTime(5000),
+            map((fileLevels) => {
+                return {
+                    datasource,
+                    fileLevels
+                }
+            })
+        );
+    }),
+    mergeAll(),
+    bufferTime(1000),
+    map(t => {
+        if (t.length > 0) {
+           return [t[0].datasource, t.map(({fileLevels}) => fileLevels).flat()] as [DataSource, {file: string; level: number}[]];
+        }
+        return null;
+    }),
+    filter(t => t !== null),
+    map(t => t!)
+)
+.subscribe({
+    next([datasource, fileLevels]) {
         _datasourceF = datasource;
         // load files with levels
         const uuid = randomUUID(); // epoch of indexing the files
-        // clear old data
-        // datasource.manager.createQueryBuilder().delete().from(File).where("epoch != :epoch", {epoch: uuid}).execute();
-        from(
-          files.filter(
-            (file) => file.endsWith('.mp4')
-          ).map(async file => {
-            // console.log('check levels of file:', file);
-            const result = await datasource.manager.findOneBy(File, {
-                path: '/' + file,
+        const fileDoList = fileLevels.filter(item => item !== null && item !== undefined).map((fileLevel) => {
+            const {file, level} = fileLevel!;
+            const fileDO = new File();
+            fileDO.epoch = uuid;
+            fileDO.path = '/' + file;
+            fileDO.level = level;
+            return fileDO;
+          });
+          if (fileDoList.length === 0) {
+            return;
+          }
+          datasource.manager.find(File).then((files) => {
+            let beforeLength = files.length;
+            datasource.manager.save(fileDoList).then(() => {
+              return datasource.manager.find(File);
+            }).then(res => {
+              console.log('length before adding:', beforeLength, 'table length after adding:', res.length);
             });
-            if (result) {
-                // console.log('file', file, 'already added');
-                return null;
-            }
-            const videoPath = path.join(dbRoot, 'resource', file);
-            const subtitles = await loadFromFileWithoutCache(videoPath);
-            const level = await getLevel(JSON.stringify(subtitles));
-            console.log('level of file:', file, ' is: ', level);
-            return {
-                file,
-                level,
-            };
-          })
-          .map(fileLevelPromise => from(fileLevelPromise))
-        ).pipe(
-          mergeAll(),
-          bufferTime(5000),
-        ).subscribe({
-            next(fileLevels) {
-              const fileDoList = fileLevels.filter(item => item !== null && item !== undefined).map((fileLevel) => {
-                const {file, level} = fileLevel!;
-                const fileDO = new File();
-                fileDO.epoch = uuid;
-                fileDO.path = '/' + file;
-                fileDO.level = level;
-                return fileDO;
-              });
-              if (fileDoList.length === 0) {
-                return;
-              }
-              datasource.manager.find(File).then((files) => {
-                let beforeLength = files.length;
-                datasource.manager.save(fileDoList).then(() => {
-                  return datasource.manager.find(File);
-                }).then(res => {
-                  console.log('length before adding:', beforeLength, 'table length after adding:', res.length);
-                });
-              });
-            }
-        });
+          });
     }
 });
 
