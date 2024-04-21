@@ -18,5 +18,5 @@ export const logToFile = (...content: unknown[]) => {
       })
       .join(' ')}\n`
   );
-  console.log(...content);
+  console.log( ...content);
 };

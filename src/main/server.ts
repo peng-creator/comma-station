@@ -26,6 +26,9 @@ import { Genre, MovieDb, ShowResponse, TvResult, TvSeasonResponse } from 'movied
 import { base64ToObject, base64ToString, db$, objectToBase64, stringToBase64, thirdPartyData$ } from './src/db';
 import { https } from 'follow-redirects';
 import { datasource$, getFilesOfLevel } from './src/data/data-source';
+import { logToFile } from './log';
+
+
 
 datasource$.subscribe({
   next(datasource) {
@@ -630,9 +633,9 @@ app.post('/api/askAI', (req, res) => {
   };
 
   const _req = https.request(options, function (_res: any) {
-    _res.on("data", function (chunk: any) {
-      console.log('on data:', chunk.toString());
-      res.write(chunk.toString());
+    _res.on("data", function (chunk: Buffer) {
+      // logToFile(chunk.toString('utf-8'));
+      res.write(chunk);
     });
 
     _res.on("end", function () {

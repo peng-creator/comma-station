@@ -1,5 +1,4 @@
 import { getDataSource, getFilesOfLevel } from "./data-source"
-import { User } from "./entity/User"
 
 // const saveUser = async () => {
 //     const datasource = await getDataSource();

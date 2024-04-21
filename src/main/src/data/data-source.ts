@@ -1,11 +1,9 @@
 import "reflect-metadata"
 import { And, Between, DataSource, LessThanOrEqual, MoreThanOrEqual } from "typeorm"
-import { User } from "./entity/User"
 import { dbRoot$ } from "../../state";
 import { Observable, Subject, bufferTime, combineLatest, filter, firstValueFrom, from, map, mergeAll, mergeMap, shareReplay, switchMap, tap, windowCount, windowTime } from "rxjs";
 import path from "path";
 import { File } from "./entity/File";
-import { Card } from "./entity/Card";
 import { files$ } from "../resourceLoader";
 import { loadFromFileWithoutCache } from "../subtitle";
 import { randomUUID } from "crypto";
@@ -20,9 +18,6 @@ const wordRanks = JSON.parse(fs.readFileSync(getAssetPath('words.json'),).toStri
         return acc;
     }, {});
 
-let _datasource: DataSource;
-let _FDatasource: DataSource;
-
 export const datasource$ = dbRoot$.pipe(
     switchMap((dbRoot) => {
         const appDataSource = new DataSource({
@@ -32,14 +27,11 @@ export const datasource$ = dbRoot$.pipe(
             logger: "file",
             logging: true,
             entities: [
-                User,
                 File,
-                Card,
             ],
             migrations: [],
             subscribers: [],
         });
-        _datasource = appDataSource;
         logToFile('init _datasource on dbRoot:', dbRoot);
         return from(appDataSource.initialize().then(() => appDataSource));
     }),
@@ -55,21 +47,7 @@ const getLevel = async (text: string) => {
           return acc;
       }
       acc += rank;
-      if (rank >= 1000 && rank < 3000) {
-          count += 1;
-      } else if (rank >= 3000 && rank < 5000) {
-          count += 0.7;
-      } else if (rank >= 5000 && rank < 7000 ) {
-          count += 0.6;
-      } else if (rank >= 7000 && rank < 9000 ) {
-          count += 0.5;
-      } else if (rank >= 9000 && rank < 12000 ) {
-          count += 0.4;
-      } else if (rank >= 12000 && rank < 15000 ) {
-          count += 0.3;
-      } else {
-          count += 0.1;
-      }
+      count += 1;
       return acc;
     }, 0) / (count + 1) || 0;
 }
@@ -135,7 +113,6 @@ combineLatest([datasource$, files$.pipe(bufferTime(10000)), dbRoot$])
 )
 .subscribe({
     next([datasource, fileLevels]) {
-      _FDatasource = datasource;
         // load files with levels
         const uuid = randomUUID(); // epoch of indexing the files
         const fileDoList = fileLevels.filter(item => item !== null && item !== undefined).map((fileLevel) => {
@@ -167,8 +144,6 @@ combineLatest([datasource$, files$.pipe(bufferTime(10000)), dbRoot$])
 
 export const getFilesOfLevel = async (queryLevel: number) => {
     const datasource = await firstValueFrom(datasource$);
-    logToFile('datasource === _FDatasource:', datasource === _FDatasource);
-    logToFile('datasource === _datasource:', datasource === _datasource);
     if (!datasource) {
         logToFile('datasource is undefined!');
         return [];
