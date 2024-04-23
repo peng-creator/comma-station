@@ -91,8 +91,8 @@ ipcMain.on('ipc-show-dir', async (event, arg) => {
 const openChildWindow = (url: string, fullscreen = false) => {
   const win = new BrowserWindow({
     fullscreen,
-    width: 1024,
-    height: 728,
+    width: 900,
+    height: 1200,
     icon: getAssetPath('icon.png'),
   });
   win.loadURL(url);
@@ -132,7 +132,7 @@ const createWindow = async () => {
     } else {
       mainWindow.show();
     }
-    openChildWindow('http://localhost:8080', true);
+    openChildWindow('http://localhost:8080');
   });
 
   mainWindow.on('closed', () => {
