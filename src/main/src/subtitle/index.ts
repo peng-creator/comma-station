@@ -8,7 +8,7 @@ import { Subtitle } from '../types/Subtitle';
 
 const loadFromFile = async (srtFilePath: string, assFilePath: string) => {
   return Promise.all([
-    fs
+    srtFilePath ? fs
       .readFile(srtFilePath)
       .then((srtBuf) => srtBuf.toString())
       .then((srtContent) => {
@@ -16,10 +16,10 @@ const loadFromFile = async (srtFilePath: string, assFilePath: string) => {
       })
       .catch((e) => {
         return [];
-      }),
-    Ass.loadBySrc(assFilePath).catch((e: any) => {
+      }) : Promise.resolve([]),
+    assFilePath ? Ass.loadBySrc(assFilePath).catch((e: any) => {
       return [];
-    }),
+    }) : Promise.resolve([]),
   ])
     .then(([srtRes, assRes]) => {
       // console.log('srtRes length:', srtRes.length);
@@ -37,6 +37,47 @@ const loadFromFile = async (srtFilePath: string, assFilePath: string) => {
 const getFilePath = async (videoPath: string) => {
   const cachePath = `${videoPath.slice(0, -4)}.json`;
   const dir = path.dirname(cachePath);
+  const videoFileName = path.basename(videoPath).slice(0, -4);
+  const sameNameSrt = path.join(dir, videoFileName + '.srt');
+  const sameNameEnSrt = path.join(dir, videoFileName + '.en.srt');
+  const sameNameAss = path.join(dir, videoFileName + '.ass');
+  const sameNameEnAss = path.join(dir, videoFileName + '.en.ass');
+  try {
+    await fs.stat(sameNameAss);
+    return {
+      cachePath,
+      srtFilePath: '',
+      assFilePath: sameNameAss,
+    };
+  } catch(e) {
+  }
+  try {
+    await fs.stat(sameNameEnAss);
+    return {
+      cachePath,
+      srtFilePath: '',
+      assFilePath: sameNameEnAss,
+    };
+  } catch(e) {
+  }
+  try {
+    await fs.stat(sameNameSrt);
+    return {
+      cachePath,
+      srtFilePath: sameNameSrt,
+      assFilePath: '',
+    };
+  } catch(e) {
+  }
+  try {
+    await fs.stat(sameNameEnSrt);
+    return {
+      cachePath,
+      srtFilePath: sameNameEnSrt,
+      assFilePath: '',
+    };
+  } catch(e) {
+  }
   // console.log('load children of dir:', dir);
   let dirChildren = await fs.readdir(dir);
   dirChildren = dirChildren.filter((child) => !child.startsWith('.'));
@@ -54,8 +95,10 @@ const getFilePath = async (videoPath: string) => {
   if (indexOfCurrentVideo === -1) {
     throw new Error('没找到当前视频文件！' + videoPath);
   }
-  const assFilName = assList[indexOfCurrentVideo];
-  const srtFileName = srtList[indexOfCurrentVideo];
+  const matchedAss = assList.find((ass) => ass.startsWith(videoFileName));
+  const matchedSrt = srtList.find((srt) => srt.startsWith(videoFileName));
+  const assFilName = matchedAss || assList[indexOfCurrentVideo];
+  const srtFileName = matchedSrt || srtList[indexOfCurrentVideo];
   const assFilePath = path.join(dir, assFilName || '');
   const srtFilePath = path.join(dir, srtFileName || '');
   return {
